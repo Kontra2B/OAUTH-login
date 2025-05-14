@@ -40,7 +40,7 @@ int main(int n, char** argv) {
 	context.parse(n, argv);
 	while (getAccess()) 
 		if (context.stop()) break;
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 bool getAccess()
@@ -80,6 +80,7 @@ bool getAccess()
 		int server = socket(AF_INET, SOCK_STREAM, 0);
 		if (server == -1) {
 			cerr << "Could not create redirection socket: " << strerror(errno) << std::endl;
+			context.state = Context::State::fail;
 			return false;
 		}
 
@@ -92,6 +93,7 @@ bool getAccess()
 
 		if (bind(server, (struct sockaddr*) &server_addr, sizeof(server_addr)) == -1) {
 			cerr << "Bind error: " << strerror(errno) << std::endl;
+			context.state = Context::State::fail;
 			close(server);
 			return false;
 		}
@@ -100,6 +102,7 @@ bool getAccess()
 		socklen_t addr_len = sizeof(addr);
 		if (getsockname(server, (struct sockaddr*)&addr, &addr_len) == -1) {
 			std::cerr << "Error getting port number: " << strerror(errno) << std::endl;
+			context.state = Context::State::fail;
 			close(server);
 			return false;
 		}
@@ -123,6 +126,7 @@ bool getAccess()
 		system(command.str().c_str());
 		listen(server, 1);
 		int redir = accept(server, 0, 0);
+		close(server);
 		char request[1024];
 		size_t n = recv(redir, request, sizeof(request), 0);
 		request[n] = 0;
@@ -139,7 +143,7 @@ bool getAccess()
 			<< endl
 			<< content.str() << endl;
 		send(redir, output.str().c_str(), output.str().size(), 0);
-		close(server);
+		close(redir);
 	}
 
 	const char* host = GOOGLE_APIS;
@@ -150,26 +154,30 @@ bool getAccess()
 	if (getaddrinfo(host, service, NULL, &res)) {
 		cerr << "Can not get address info for: " << host << endl
 			<< strerror(errno) << endl;
+		context.state = Context::State::fail;
 		return false;
 	}
 
 	int client = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 	if (client == -1) {
 		cerr << "Could not create client socket: " << strerror(errno) << std::endl;
+		context.state = Context::State::fail;
 		return false;
 	}
 	if (::connect(client, res->ai_addr, res->ai_addrlen) != 0) {
 		cerr << "Can not connect client socket to: " << host << endl;
+		context.state = Context::State::fail;
 		close(client);
 		return false;
 	}
 
 	SSL_library_init();
-	SSL_load_error_strings();
 
 	SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
 	if (!ctx) {
 		cerr << "Can not create SSL context" << endl;
+		context.state = Context::State::fail;
+		close(client);
 		return false;
 	}
 
@@ -178,6 +186,7 @@ bool getAccess()
 
 	if (SSL_connect(ssl) < 1) {
 		cerr << "Can not connect client SSL socket: ";
+		context.state = Context::State::fail;
 		ERR_print_errors_fp(stderr);
 		SSL_free(ssl);
 		SSL_CTX_free(ctx);
@@ -225,7 +234,7 @@ bool getAccess()
 
 	utimbuf times = {0, time};
 	File token(context.home / MUTT_CONFIG / context.hint / ACCESS_TOKEN);
-	if (context.debug) cerr << "Changing time for: " << token.getName() << endl;
+	if (context.debug) cerr << "Setting time for: " << token.getName() << endl;
 	utime(token.getName().c_str(), &times);
 
 	cout << secret;

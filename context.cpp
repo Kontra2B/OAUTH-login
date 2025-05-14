@@ -65,6 +65,7 @@ Example:
 	cerr << "Parsed arguments:" << endl
 		<< *this << endl;
 
+	wait();
 	if (help) exit(EXIT_SUCCESS);
 }
 
@@ -77,19 +78,17 @@ ostream& operator<<(ostream& oss, const Context& context) {
 	}
 	if (context.confirm) oss << ", confirm";
 	oss << ", PID:" << getpid();
-	if (context.state > Context::State::none) {
+	if (context.state != Context::State::none) {
 		oss << ", action:";
 		if (context.state > Context::State::refresh) oss << "access";
 		else if (context.state > Context::State::token) oss << "refresh";
-		else oss << "token";
+		else if (context.state > Context::State::none) oss << "token";
+		else oss << "fail";
 	}
 	return oss << endl;
 }
 
-bool Context::stop()
-{
-	return !--retry;
-}
+bool Context::stop() { return !--retry; }
 
 Context::Context(){
 	verbose = debug = confirm = false;
@@ -104,5 +103,11 @@ Context::~Context(){
 		ofstream file(log.c_str(), ios::app);
 		file << put_time(localtime(&now), "%Y.%m.%d %H:%M:%S") << ' ' << *this;
 	}
+}
 
+void Context::wait(string&& info) {
+    if (!confirm) return;
+    if (!info.empty()) cerr << '\t' << info << endl;
+    cerr << "\tPress enter to continue...";
+    cin.get();
 }

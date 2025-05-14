@@ -5,7 +5,7 @@
 #include <filesystem>
 
 struct Context {
-	enum class State {none, token, refresh, access};
+	enum class State {fail = -1, none, token, refresh, access};
 	bool verbose, debug, confirm, help;
 	int retry;
 	State state;
@@ -16,7 +16,8 @@ struct Context {
 	Context();
 	~Context();
 	void parse(size_t, char**);
-	friend std::ostream& operator<<(std::ostream& oss, const Context& context);
 	private:
+	void wait(std::string&& = std::string());
 	bool set(options&, const char*);
+	friend std::ostream& operator<<(std::ostream& oss, const Context& context);
 };
