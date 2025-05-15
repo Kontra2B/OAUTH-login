@@ -17,7 +17,7 @@ struct Context {
 	~Context();
 	void parse(size_t, char**);
 	private:
-	void wait(std::string&& = std::string());
+	void wait(std::string&& = "");
 	bool set(options&, const char*);
 	friend std::ostream& operator<<(std::ostream& oss, const Context& context);
 };

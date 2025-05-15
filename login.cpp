@@ -1,5 +1,4 @@
 #include <iostream>
-#include <fstream>
 #include <iomanip>
 #include <ctime>
 #include <cstring>
@@ -19,22 +18,11 @@
 #include "context.hpp"
 #include "code.hpp"
 
-#define GOOGLE_ACCOUNTS "https://accounts.google.com/o/oauth2/v2/auth"
-#define CLIENT_ID "1066306325374-itr5ih1ivquo8hmi841ts7mumv2vn2k4.apps.googleusercontent.com"
-#define CLIENT_SECRET "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"
-#define GOOGLE_APIS "oauth2.googleapis.com"
-#define MUTT_CONFIG ".mutt/accounts"
-#define ACCESS_TOKEN "access_token"
-#define REFRESH_TOKEN "refresh_token"
+#include "login.hpp"
 
 using namespace std;
-Context context;
 
-bool getAccess();
-string getJson(string&&);
-string getToken(string&&, const string&);
-time_t getTime(string&&, const string&);
-string urlEncode(const string&);
+Context context;
 
 int main(int n, char** argv) {
 	context.parse(n, argv);
@@ -49,7 +37,7 @@ bool getAccess()
 	File access(context.home / MUTT_CONFIG / context.hint / ACCESS_TOKEN);
 	if (access) {
 		struct stat info;
-		stat(access.getName().c_str(), &info);
+		stat(access.getName(), &info);
 		if (context.verbose) cerr << "Found access token file: " << access.getName();
 		if (info.st_mtime > time(0)) {
 			access >> secret;
@@ -60,7 +48,7 @@ bool getAccess()
 				return false;
 			}
 		}
-		if (context.verbose) cerr << "... but token has expired or been revoked" << endl;
+		if (context.verbose) cerr << "... but token has expired" << endl;
 	}
 
 	string refresh;
@@ -68,8 +56,8 @@ bool getAccess()
 	if (reaccess) {
 		if (context.verbose) cerr << "Found refresh token file: " << reaccess.getName();
 		reaccess >> refresh;
-		if (refresh.empty()) 
-			if (context.verbose) cerr << "... but it is empty" << endl;
+		if (refresh.empty() && context.verbose) cerr << "... but it is empty";
+		cerr << endl;
 	}
 
 	Code crypto;
@@ -87,9 +75,9 @@ bool getAccess()
 		struct sockaddr_in server_addr;
 		std::memset(&server_addr, 0, sizeof(server_addr));
 
-		server_addr.sin_family = AF_INET; // IPv4
+		server_addr.sin_family = AF_INET;	// IPv4
 		server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-		server_addr.sin_port = htons(0);
+		server_addr.sin_port = htons(0);	// any port
 
 		if (bind(server, (struct sockaddr*) &server_addr, sizeof(server_addr)) == -1) {
 			cerr << "Bind error: " << strerror(errno) << std::endl;
@@ -216,8 +204,9 @@ bool getAccess()
 		<< "Content-Length: " << append.size() << endl
 		<< endl
 		<< append;
-	if (context.debug) cerr << endl << output.str() << endl;
-	SSL_write(ssl, output.str().c_str(), output.str().size());
+	append = std::move(output.str());
+	if (context.debug) cerr << "Sending request:\n" << append << endl;
+	SSL_write(ssl, append.c_str(), append.size());
 	string response;
 	response.resize(2048);
 	auto n = SSL_read(ssl, (void*)response.data(), response.capacity()); 
@@ -235,7 +224,7 @@ bool getAccess()
 	utimbuf times = {0, time};
 	File token(context.home / MUTT_CONFIG / context.hint / ACCESS_TOKEN);
 	if (context.debug) cerr << "Setting time for: " << token.getName() << endl;
-	utime(token.getName().c_str(), &times);
+	utime(token.getName(), &times);
 
 	cout << secret;
 	return false;

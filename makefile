@@ -1,7 +1,7 @@
 CC = g++
 CFLAGS = -o2
 SRC = file.cpp code.cpp context.cpp login.cpp
-INC = file.hpp code.hpp context.hpp
+INC = file.hpp code.hpp context.hpp login.hpp
 OBJ = $(SRC:%.cpp=%.o)
 LDFLAGS = -lcrypto -lssl
 BIN = oauth.login

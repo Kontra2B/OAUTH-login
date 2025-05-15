@@ -8,5 +8,5 @@ class File: public std::fstream {
 	File(std::string&&);
 	std::iostream& operator>>(std::string&);
 	std::iostream& operator<<(const std::string&);
-	std::string getName() const;
+	const char* getName() const;
 };

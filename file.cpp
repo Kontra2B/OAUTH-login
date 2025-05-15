@@ -30,7 +30,7 @@ iostream& File::operator<<(const string& content)
 	return *this;
 }
 
-string File::getName() const
+const char* File::getName() const
 {
-	return absolute(path);
+	return path.c_str();
 }
