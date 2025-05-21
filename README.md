@@ -11,8 +11,7 @@ git clone git@github.com:Kontra2B/OAUTH-login
 make -C OAUTH-login
 make -C OAUTH-login install
 ```
-Installs to ~/.local/bin that should be in $PATH.\
-Otherwise you need full path to oauth.login.
+Installs to ~/.local/bin that should be in $PATH. Otherwise you need full path to oauth.login.
 
 Can be run standalone `oauth.login your.user.nick@gmail.com` or with an e-mail client.
 
